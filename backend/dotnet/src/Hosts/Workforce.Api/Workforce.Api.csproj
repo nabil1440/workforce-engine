@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\Workforce.AppCore\Workforce.AppCore.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Workforce.Infrastructure.Sql\Workforce.Infrastructure.Sql.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Workforce.Infrastructure.Mongo\Workforce.Infrastructure.Mongo.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Workforce.Infrastructure.Messaging\Workforce.Infrastructure.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>
