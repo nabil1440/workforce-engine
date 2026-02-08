@@ -1,5 +1,5 @@
 using Workforce.AppCore.Abstractions;
-using Workforce.AppCore.Domain.Projects;
+using ProjectTaskStatus = Workforce.AppCore.Domain.Projects.TaskStatus;
 
 namespace Workforce.AppCore.Domain.Events;
 
@@ -13,7 +13,7 @@ public sealed record TaskAssigned(int TaskId, int? AssignedEmployeeId) : IDomain
     public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;
 }
 
-public sealed record TaskStatusChanged(int TaskId, TaskStatus FromStatus, TaskStatus ToStatus) : IDomainEvent
+public sealed record TaskStatusChanged(int TaskId, ProjectTaskStatus FromStatus, ProjectTaskStatus ToStatus) : IDomainEvent
 {
     public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;
 }
