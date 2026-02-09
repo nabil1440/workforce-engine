@@ -15,6 +15,7 @@ export type LeaveStat = {
 };
 
 export type DashboardSummary = {
+  summaryKey: string;
   generatedAt: Date;
   headcountByDepartment: HeadcountByDepartment[];
   activeProjectsCount: number;

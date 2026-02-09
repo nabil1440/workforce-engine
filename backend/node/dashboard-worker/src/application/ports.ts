@@ -1,4 +1,5 @@
 import {
+  DashboardSummary,
   HeadcountByDepartment,
   LeaveStat,
   TasksByStatus
@@ -15,11 +16,5 @@ export interface MongoLeaveStatsReader {
 }
 
 export interface MongoDashboardWriter {
-  saveSummary(summary: {
-    generatedAt: Date;
-    headcountByDepartment: HeadcountByDepartment[];
-    activeProjectsCount: number;
-    tasksByStatus: TasksByStatus[];
-    leaveStats: LeaveStat[];
-  }): Promise<void>;
+  saveSummary(summary: DashboardSummary): Promise<void>;
 }

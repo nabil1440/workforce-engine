@@ -12,6 +12,10 @@ export class MongoDashboardRepository implements MongoDashboardWriter {
   }
 
   async saveSummary(summary: DashboardSummary): Promise<void> {
-    await this.collection.insertOne(summary);
+    await this.collection.updateOne(
+      { summaryKey: summary.summaryKey },
+      { $set: summary },
+      { upsert: true }
+    );
   }
 }
