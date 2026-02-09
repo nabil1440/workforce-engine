@@ -6,18 +6,18 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
     environment:
-      ConnectionStrings__Sql: Host=postgres;Port=5432;Database=workforce;Username=workforce;Password=workforce
-      Mongo__ConnectionString: mongodb://mongo:27017
-      Mongo__Database: workforce
-      Rabbit__HostName: rabbitmq
-      Rabbit__Port: 5672
-      Rabbit__UserName: guest
-      Rabbit__Password: guest
-      Rabbit__VirtualHost: /
-      Rabbit__ExchangePrefix: workforce.events
-      Rabbit__AuditQueueName: workforce.audit
+      ConnectionStrings__Sql: Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-workforce};Username=${POSTGRES_USER:-workforce};Password=${POSTGRES_PASSWORD:-workforce}
+      Mongo__ConnectionString: ${MONGO_CONNECTION_STRING:-mongodb://mongo:27017}
+      Mongo__Database: ${MONGO_DATABASE:-workforce}
+      Rabbit__HostName: ${RABBITMQ_HOSTNAME:-rabbitmq}
+      Rabbit__Port: ${RABBITMQ_PORT:-5672}
+      Rabbit__UserName: ${RABBITMQ_USERNAME:-guest}
+      Rabbit__Password: ${RABBITMQ_PASSWORD:-guest}
+      Rabbit__VirtualHost: ${RABBITMQ_VHOST:-/}
+      Rabbit__ExchangePrefix: ${RABBITMQ_EXCHANGE_PREFIX:-workforce.events}
+      Rabbit__AuditQueueName: ${RABBITMQ_AUDIT_QUEUE:-workforce.audit}
     ports:
-      - '8080:8080'
+      - '${API_PORT:-8080}:8080'
     depends_on:
       - postgres
       - mongo
@@ -28,15 +28,22 @@ services:
       context: .
       dockerfile: docker/Dockerfile.auditworker
     environment:
-      Mongo__ConnectionString: mongodb://mongo:27017
-      Mongo__Database: workforce
-      Rabbit__HostName: rabbitmq
-      Rabbit__Port: 5672
-      Rabbit__UserName: guest
-      Rabbit__Password: guest
-      Rabbit__VirtualHost: /
-      Rabbit__ExchangePrefix: workforce.events
-      Rabbit__AuditQueueName: workforce.audit
+      Mongo__ConnectionString: ${MONGO_CONNECTION_STRING:-mongodb://mongo:27017}
+      Mongo__Database: ${MONGO_DATABASE:-workforce}
+      Rabbit__HostName: ${RABBITMQ_HOSTNAME:-rabbitmq}
+      Rabbit__Port: ${RABBITMQ_PORT:-5672}
+      Rabbit__UserName: ${RABBITMQ_USERNAME:-guest}
+      Rabbit__Password: ${RABBITMQ_PASSWORD:-guest}
+      Rabbit__VirtualHost: ${RABBITMQ_VHOST:-/}
+      Rabbit__ExchangePrefix: ${RABBITMQ_EXCHANGE_PREFIX:-workforce.events}
+      Rabbit__AuditQueueName: ${RABBITMQ_AUDIT_QUEUE:-workforce.audit}
+      Rabbit__AuditRetryQueueName: ${RABBITMQ_AUDIT_RETRY_QUEUE:-workforce.audit.retry}
+      Rabbit__AuditDeadLetterQueueName: ${RABBITMQ_AUDIT_DLQ:-workforce.audit.dlq}
+      Rabbit__MaxRetries: ${RABBITMQ_MAX_RETRIES:-3}
+      Rabbit__RetryBaseDelaySeconds: ${RABBITMQ_RETRY_BASE_DELAY_SECONDS:-5}
+      Health__Url: ${AUDIT_HEALTH_URL:-http://0.0.0.0:8081}
+    ports:
+      - '${AUDIT_WORKER_PORT:-8081}:8081'
     depends_on:
       - mongo
       - rabbitmq
@@ -44,26 +51,26 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: workforce
-      POSTGRES_PASSWORD: workforce
-      POSTGRES_DB: workforce
+      POSTGRES_USER: ${POSTGRES_USER:-workforce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workforce}
+      POSTGRES_DB: ${POSTGRES_DB:-workforce}
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   mongo:
     image: mongo:7
     ports:
-      - '27017:27017'
+      - '${MONGO_PORT:-27017}:27017'
     volumes:
       - mongo_data:/data/db
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - '5672:5672'
-      - '15672:15672'
+      - '${RABBITMQ_PORT:-5672}:5672'
+      - '${RABBITMQ_MANAGEMENT_PORT:-15672}:15672'
 
 volumes:
   postgres_data:
