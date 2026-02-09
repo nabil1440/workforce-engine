@@ -1,6 +1,8 @@
+using Workforce.AppCore.Abstractions;
 using Workforce.AppCore.Abstractions.Queries;
 using Workforce.AppCore.Abstractions.Repositories;
 using Workforce.AppCore.Abstractions.Results;
+using Workforce.AppCore.Domain.Events;
 using Workforce.AppCore.Domain.Projects;
 using Workforce.AppCore.Validation;
 using ProjectTaskStatus = Workforce.AppCore.Domain.Projects.TaskStatus;
@@ -10,10 +12,12 @@ namespace Workforce.AppCore.Services.Implementations;
 public sealed class TaskService : ITaskService
 {
     private readonly ITaskRepository _tasks;
+    private readonly IEventPublisher _events;
 
-    public TaskService(ITaskRepository tasks)
+    public TaskService(ITaskRepository tasks, IEventPublisher events)
     {
         _tasks = tasks;
+        _events = events;
     }
 
     public async Task<Result<PagedResult<WorkTask>>> ListByProjectAsync(int projectId, TaskQuery query, CancellationToken cancellationToken = default)
@@ -58,6 +62,13 @@ public sealed class TaskService : ITaskService
 
         var id = await _tasks.AddAsync(task, cancellationToken);
         task.Id = id;
+        await _events.PublishAsync(new TaskCreated(task.Id, task.ProjectId, "system", null, task), cancellationToken);
+
+        if (task.AssignedEmployeeId.HasValue)
+        {
+            await _events.PublishAsync(new TaskAssigned(task.Id, task.AssignedEmployeeId, "system", null, task), cancellationToken);
+        }
+
         return Result<WorkTask>.Success(task);
     }
 
@@ -81,6 +92,11 @@ public sealed class TaskService : ITaskService
         }
 
         await _tasks.UpdateAsync(task, cancellationToken);
+        if (existing.AssignedEmployeeId != task.AssignedEmployeeId)
+        {
+            await _events.PublishAsync(new TaskAssigned(task.Id, task.AssignedEmployeeId, "system", existing, task), cancellationToken);
+        }
+
         return Result<WorkTask>.Success(task);
     }
 
@@ -98,6 +114,17 @@ public sealed class TaskService : ITaskService
             return Result<WorkTask>.Fail(Errors.NotFound("Task", taskId));
         }
 
+        var before = new WorkTask
+        {
+            Id = task.Id,
+            ProjectId = task.ProjectId,
+            AssignedEmployeeId = task.AssignedEmployeeId,
+            Title = task.Title,
+            Description = task.Description,
+            Status = task.Status,
+            Priority = task.Priority,
+            DueDate = task.DueDate
+        };
         validation = TaskRules.ValidateStatusChange(task.Status, toStatus);
         if (!validation.IsSuccess)
         {
@@ -106,6 +133,7 @@ public sealed class TaskService : ITaskService
 
         task.Status = toStatus;
         await _tasks.UpdateAsync(task, cancellationToken);
+        await _events.PublishAsync(new TaskStatusChanged(task.Id, before.Status, toStatus, "system", before, task), cancellationToken);
         return Result<WorkTask>.Success(task);
     }
 }

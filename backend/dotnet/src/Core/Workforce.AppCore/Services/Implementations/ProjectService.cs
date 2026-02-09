@@ -1,6 +1,8 @@
+using Workforce.AppCore.Abstractions;
 using Workforce.AppCore.Abstractions.Queries;
 using Workforce.AppCore.Abstractions.Repositories;
 using Workforce.AppCore.Abstractions.Results;
+using Workforce.AppCore.Domain.Events;
 using Workforce.AppCore.Domain.Projects;
 using Workforce.AppCore.Validation;
 
@@ -9,10 +11,12 @@ namespace Workforce.AppCore.Services.Implementations;
 public sealed class ProjectService : IProjectService
 {
     private readonly IProjectRepository _projects;
+    private readonly IEventPublisher _events;
 
-    public ProjectService(IProjectRepository projects)
+    public ProjectService(IProjectRepository projects, IEventPublisher events)
     {
         _projects = projects;
+        _events = events;
     }
 
     public async Task<Result<PagedResult<Project>>> ListAsync(ProjectQuery query, CancellationToken cancellationToken = default)
@@ -51,6 +55,7 @@ public sealed class ProjectService : IProjectService
 
         var id = await _projects.AddAsync(project, cancellationToken);
         project.Id = id;
+        await _events.PublishAsync(new ProjectCreated(project.Id, "system", null, project), cancellationToken);
         return Result<Project>.Success(project);
     }
 
@@ -74,6 +79,7 @@ public sealed class ProjectService : IProjectService
         }
 
         await _projects.UpdateAsync(project, cancellationToken);
+        await _events.PublishAsync(new ProjectUpdated(project.Id, "system", existing, project), cancellationToken);
         return Result<Project>.Success(project);
     }
 
@@ -97,8 +103,18 @@ public sealed class ProjectService : IProjectService
             return Result<Project>.Fail(validation.Error);
         }
 
+        var before = new Project
+        {
+            Id = project.Id,
+            Name = project.Name,
+            Description = project.Description,
+            Status = project.Status,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate
+        };
         project.Status = toStatus;
         await _projects.UpdateAsync(project, cancellationToken);
+        await _events.PublishAsync(new ProjectStatusChanged(project.Id, before.Status, toStatus, "system", before, project), cancellationToken);
         return Result<Project>.Success(project);
     }
 }

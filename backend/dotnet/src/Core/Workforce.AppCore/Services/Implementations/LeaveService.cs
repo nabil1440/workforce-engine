@@ -1,6 +1,8 @@
+using Workforce.AppCore.Abstractions;
 using Workforce.AppCore.Abstractions.Queries;
 using Workforce.AppCore.Abstractions.Repositories;
 using Workforce.AppCore.Abstractions.Results;
+using Workforce.AppCore.Domain.Events;
 using Workforce.AppCore.Domain.Leaves;
 using Workforce.AppCore.Validation;
 
@@ -9,10 +11,12 @@ namespace Workforce.AppCore.Services.Implementations;
 public sealed class LeaveService : ILeaveService
 {
     private readonly ILeaveRequestRepository _leaves;
+    private readonly IEventPublisher _events;
 
-    public LeaveService(ILeaveRequestRepository leaves)
+    public LeaveService(ILeaveRequestRepository leaves, IEventPublisher events)
     {
         _leaves = leaves;
+        _events = events;
     }
 
     public async Task<Result<PagedResult<LeaveRequest>>> ListAsync(LeaveQuery query, CancellationToken cancellationToken = default)
@@ -57,6 +61,7 @@ public sealed class LeaveService : ILeaveService
 
         var id = await _leaves.AddAsync(leaveRequest, cancellationToken);
         leaveRequest.Id = id;
+        await _events.PublishAsync(new LeaveRequested(leaveRequest.Id, "system", null, leaveRequest), cancellationToken);
         return Result<LeaveRequest>.Success(leaveRequest);
     }
 
@@ -100,6 +105,25 @@ public sealed class LeaveService : ILeaveService
             return Result<LeaveRequest>.Fail(Errors.NotFound("LeaveRequest", id));
         }
 
+        var before = new LeaveRequest
+        {
+            Id = leave.Id,
+            EmployeeId = leave.EmployeeId,
+            EmployeeName = leave.EmployeeName,
+            LeaveType = leave.LeaveType,
+            StartDate = leave.StartDate,
+            EndDate = leave.EndDate,
+            Status = leave.Status,
+            Reason = leave.Reason,
+            CreatedAt = leave.CreatedAt,
+            ApprovalHistory = leave.ApprovalHistory.Select(entry => new LeaveRequest.ApprovalHistoryEntry
+            {
+                Status = entry.Status,
+                ChangedBy = entry.ChangedBy,
+                ChangedAt = entry.ChangedAt,
+                Comment = entry.Comment
+            }).ToList()
+        };
         validation = LeaveRules.ValidateApproval(leave.Status, toStatus);
         if (!validation.IsSuccess)
         {
@@ -117,6 +141,18 @@ public sealed class LeaveService : ILeaveService
         });
 
         await _leaves.UpdateAsync(leave, cancellationToken);
+        await PublishLeaveEvent(id, toStatus, before, leave, cancellationToken);
         return Result<LeaveRequest>.Success(leave);
+    }
+
+    private Task PublishLeaveEvent(string id, LeaveStatus status, LeaveRequest before, LeaveRequest after, CancellationToken cancellationToken)
+    {
+        return status switch
+        {
+            LeaveStatus.Approved => _events.PublishAsync(new LeaveApproved(id, "system", before, after), cancellationToken),
+            LeaveStatus.Rejected => _events.PublishAsync(new LeaveRejected(id, "system", before, after), cancellationToken),
+            LeaveStatus.Cancelled => _events.PublishAsync(new LeaveCancelled(id, "system", before, after), cancellationToken),
+            _ => Task.CompletedTask
+        };
     }
 }
