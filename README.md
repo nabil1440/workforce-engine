@@ -1,5 +1,7 @@
 # Workforce Engine
 
+[![CI Status](https://github.com/nabil1440/workforce-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/nabil1440/workforce-engine/actions/workflows/ci.yml)
+
 Workforce Engine is a distributed, event-driven HR and work management system. It combines a .NET API, a .NET audit worker, and a Node.js dashboard worker with Postgres, MongoDB, and RabbitMQ to manage operational data and reporting.
 
 ## Architecture (Quick View)
