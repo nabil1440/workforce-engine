@@ -6,8 +6,9 @@ import { SqlDashboardRepository } from './infrastructure/sql/SqlDashboardReposit
 import { MongoLeaveRepository } from './infrastructure/mongo/MongoLeaveRepository.js';
 import { MongoDashboardRepository } from './infrastructure/mongo/MongoDashboardRepository.js';
 import { DashboardSummaryService } from './application/DashboardSummaryService.js';
-import { runScheduler } from './presentation/Scheduler.js';
+import { runSummaryOnce } from './presentation/Scheduler.js';
 import { logger } from './infrastructure/logger.js';
+import { startEventConsumer } from './infrastructure/rabbit/WorkerEventConsumer.js';
 
 const config = loadConfig();
 const sqlClient = createSqlClient(config.sqlUrl);
@@ -38,20 +39,60 @@ async function main(): Promise<void> {
   );
 
   const server = startHealthServer(config.healthPort);
-  await runScheduler(
-    service,
-    config.cronSchedule,
+  const consumer = await connectWithRetry(
+    () =>
+      startEventConsumer(
+        {
+          url: config.rabbitUrl,
+          exchangePrefix: config.rabbitExchangePrefix,
+          queueName: config.rabbitQueueName,
+          prefetch: config.rabbitPrefetch,
+          eventTypes: [
+            'EmployeeCreated',
+            'EmployeeUpdated',
+            'EmployeeDeactivated',
+            'ProjectCreated',
+            'ProjectUpdated',
+            'ProjectStatusChanged',
+            'TaskCreated',
+            'TaskAssigned',
+            'TaskStatusChanged',
+            'LeaveRequested',
+            'LeaveApproved',
+            'LeaveRejected',
+            'LeaveCancelled'
+          ]
+        },
+        async envelope => {
+          logger.info('Dashboard event received.', {
+            eventType: envelope.eventType,
+            occurredAt: envelope.occurredAt ?? null
+          });
+
+          const summary = await runSummaryOnce(
+            service,
+            config.retryMaxAttempts,
+            config.retryBaseDelayMs
+          );
+          logger.info('Dashboard summary generated.', {
+            generatedAt: summary.generatedAt.toISOString(),
+            activeProjectsCount: summary.activeProjectsCount,
+            headcount: summary.headcountByDepartment.length
+          });
+        }
+      ),
     config.retryMaxAttempts,
-    config.retryBaseDelayMs
+    config.retryBaseDelayMs,
+    'RabbitMQ'
   );
 
   logger.info('Dashboard worker started.', {
-    schedule: config.cronSchedule,
-    healthPort: config.healthPort
+    healthPort: config.healthPort,
+    rabbitQueue: config.rabbitQueueName
   });
 
-  process.on('SIGINT', () => shutdown(server));
-  process.on('SIGTERM', () => shutdown(server));
+  process.on('SIGINT', () => shutdown(server, consumer));
+  process.on('SIGTERM', () => shutdown(server, consumer));
 }
 
 main().catch(error => {
@@ -83,16 +124,16 @@ async function connectWithRetry<T>(
   maxAttempts: number,
   baseDelayMs: number,
   target: string
-): Promise<void> {
+): Promise<T> {
   let attempt = 0;
   let lastError: unknown;
 
   while (attempt < maxAttempts) {
     attempt += 1;
     try {
-      await action();
+      const result = await action();
       logger.info('Connection established.', { target, attempt });
-      return;
+      return result;
     } catch (error) {
       lastError = error;
       if (attempt >= maxAttempts) {
@@ -113,9 +154,13 @@ async function connectWithRetry<T>(
   throw lastError;
 }
 
-async function shutdown(server: http.Server): Promise<void> {
+async function shutdown(
+  server: http.Server,
+  consumer: Awaited<ReturnType<typeof startEventConsumer>>
+): Promise<void> {
   logger.info('Dashboard worker shutting down.');
 
+  await consumer.close();
   await sqlClient.$disconnect();
   await mongoClient.close();
 

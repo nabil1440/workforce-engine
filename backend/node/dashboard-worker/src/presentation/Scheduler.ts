@@ -1,39 +1,16 @@
-import cron from 'node-cron';
 import { DashboardSummaryService } from '../application/DashboardSummaryService.js';
 import { logger } from '../infrastructure/logger.js';
 
-export async function runScheduler(
-  service: DashboardSummaryService,
-  schedule: string,
-  retryMaxAttempts: number,
-  retryBaseDelayMs: number
-): Promise<void> {
-  await runOnce(service, retryMaxAttempts, retryBaseDelayMs);
-
-  cron.schedule(schedule, async () => {
-    await runOnce(service, retryMaxAttempts, retryBaseDelayMs);
-  });
-}
-
-async function runOnce(
+export async function runSummaryOnce(
   service: DashboardSummaryService,
   retryMaxAttempts: number,
   retryBaseDelayMs: number
-): Promise<void> {
-  try {
-    const summary = await runWithRetry(
-      () => service.buildAndStore(),
-      retryMaxAttempts,
-      retryBaseDelayMs
-    );
-    logger.info('Dashboard summary generated.', {
-      generatedAt: summary.generatedAt.toISOString(),
-      activeProjectsCount: summary.activeProjectsCount,
-      headcount: summary.headcountByDepartment.length
-    });
-  } catch (error) {
-    logger.error('Failed to generate dashboard summary after retries.', error);
-  }
+): Promise<Awaited<ReturnType<DashboardSummaryService['buildAndStore']>>> {
+  return runWithRetry(
+    () => service.buildAndStore(),
+    retryMaxAttempts,
+    retryBaseDelayMs
+  );
 }
 
 async function runWithRetry<T>(
@@ -60,7 +37,7 @@ async function runWithRetry<T>(
         maxAttempts,
         delayMs: delay
       });
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 
