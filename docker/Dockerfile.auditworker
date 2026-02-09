@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY backend/dotnet/Workforce.slnx backend/dotnet/Workforce.slnx
+COPY backend/dotnet/src/Core/Workforce.AppCore/Workforce.AppCore.csproj backend/dotnet/src/Core/Workforce.AppCore/
+COPY backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Mongo/Workforce.Infrastructure.Mongo.csproj backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Mongo/
+COPY backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Messaging/Workforce.Infrastructure.Messaging.csproj backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Messaging/
+COPY backend/dotnet/src/Hosts/Workforce.AuditWorker/Workforce.AuditWorker.csproj backend/dotnet/src/Hosts/Workforce.AuditWorker/
+
+RUN dotnet restore backend/dotnet/Workforce.slnx
+
+COPY backend/dotnet/ backend/dotnet/
+
+RUN dotnet publish backend/dotnet/src/Hosts/Workforce.AuditWorker/Workforce.AuditWorker.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENTRYPOINT ["dotnet", "Workforce.AuditWorker.dll"]

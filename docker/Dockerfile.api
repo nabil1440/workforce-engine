@@ -1,0 +1,24 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY backend/dotnet/Workforce.slnx backend/dotnet/Workforce.slnx
+COPY backend/dotnet/src/Core/Workforce.AppCore/Workforce.AppCore.csproj backend/dotnet/src/Core/Workforce.AppCore/
+COPY backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Sql/Workforce.Infrastructure.Sql.csproj backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Sql/
+COPY backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Mongo/Workforce.Infrastructure.Mongo.csproj backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Mongo/
+COPY backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Messaging/Workforce.Infrastructure.Messaging.csproj backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Messaging/
+COPY backend/dotnet/src/Hosts/Workforce.Api/Workforce.Api.csproj backend/dotnet/src/Hosts/Workforce.Api/
+
+RUN dotnet restore backend/dotnet/Workforce.slnx
+
+COPY backend/dotnet/ backend/dotnet/
+
+RUN dotnet publish backend/dotnet/src/Hosts/Workforce.Api/Workforce.Api.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "Workforce.Api.dll"]
