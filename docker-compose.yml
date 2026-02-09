@@ -91,6 +91,13 @@ services:
       timeout: 5s
       retries: 3
 
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - '${FRONTEND_PORT:-5173}:80'
+
   postgres:
     image: postgres:16
     environment:
