@@ -5,6 +5,7 @@ export type WorkerConfig = {
   mongoConnectionString: string;
   mongoDatabase: string;
   cronSchedule: string;
+  healthPort: number;
 };
 
 function requireValue(value: string | undefined, name: string): string {
@@ -31,6 +32,11 @@ function buildSqlUrl(): string {
 }
 
 export function loadConfig(): WorkerConfig {
+  const healthPort = Number.parseInt(
+    process.env.DASHBOARD_HEALTH_PORT ?? "8090",
+    10
+  );
+
   return {
     sqlUrl: buildSqlUrl(),
     mongoConnectionString: requireValue(
@@ -38,6 +44,7 @@ export function loadConfig(): WorkerConfig {
       'MONGO_CONNECTION_STRING'
     ),
     mongoDatabase: process.env.MONGO_DATABASE ?? 'workforce',
-    cronSchedule: process.env.DASHBOARD_CRON ?? '0 * * * *'
+    cronSchedule: process.env.DASHBOARD_CRON ?? '0 * * * *',
+    healthPort: Number.isNaN(healthPort) ? 8090 : healthPort
   };
 }
