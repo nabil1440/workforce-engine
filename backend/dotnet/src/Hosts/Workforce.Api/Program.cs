@@ -31,9 +31,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.MapControllers();
-if (app.Configuration.GetValue("ApplyMigrationsOnStartup", true))
+if (!app.Configuration.GetValue("SkipMigrationsOnStartup", false))
 {
-    app.ApplyMigrations();
+    var seedData = app.Configuration.GetValue("SeedDataOnStartup", true);
+    await app.ApplyMigrationsAsync(seedData);
 }
 
 app.Run();
