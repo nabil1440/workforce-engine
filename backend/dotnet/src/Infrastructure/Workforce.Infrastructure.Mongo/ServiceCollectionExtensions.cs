@@ -5,6 +5,7 @@ using MongoDB.Driver;
 using Workforce.AppCore.Abstractions.Repositories;
 using Workforce.Infrastructure.Mongo.Options;
 using Workforce.Infrastructure.Mongo.Repositories;
+using Workforce.Infrastructure.Mongo.Seeding;
 using Workforce.Infrastructure.Mongo.Serialization;
 
 namespace Workforce.Infrastructure.Mongo;
@@ -35,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IDashboardSummaryRepository, DashboardSummaryRepository>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<IMongoSeedData, MongoSeedData>();
 
         return services;
     }
