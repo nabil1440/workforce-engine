@@ -15,7 +15,8 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         {
             var values = new Dictionary<string, string?>
             {
-                ["ApplyMigrationsOnStartup"] = "false"
+                ["SkipMigrationsOnStartup"] = "true",
+                ["SeedDataOnStartup"] = "false"
             };
 
             config.AddInMemoryCollection(values);
