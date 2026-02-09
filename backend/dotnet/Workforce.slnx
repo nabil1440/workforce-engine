@@ -13,6 +13,7 @@
     <Project Path="src/Infrastructure/Workforce.Infrastructure.Sql/Workforce.Infrastructure.Sql.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Workforce.Api.Tests/Workforce.Api.Tests.csproj" />
     <Project Path="tests/Workforce.AppCore.Tests/Workforce.AppCore.Tests.csproj" />
   </Folder>
 </Solution>

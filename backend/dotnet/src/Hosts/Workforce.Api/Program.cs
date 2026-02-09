@@ -1,3 +1,4 @@
+using Workforce.Api.Startup;
 using Workforce.AppCore.Services;
 using Workforce.AppCore.Services.Implementations;
 using Workforce.Infrastructure.Messaging;
@@ -30,5 +31,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.MapControllers();
+if (app.Configuration.GetValue("ApplyMigrationsOnStartup", true))
+{
+    app.ApplyMigrations();
+}
 
 app.Run();
+
+public partial class Program;
