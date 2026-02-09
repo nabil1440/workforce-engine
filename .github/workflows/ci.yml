@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore and build backend
+        run: dotnet build backend/dotnet/Workforce.slnx
+
+      - name: Install and build dashboard worker
+        working-directory: backend/node/dashboard-worker
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install and build frontend
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run backend tests
+        run: dotnet test backend/dotnet/Workforce.slnx
+
+      - name: Run frontend tests
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test --if-present
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dotnet format
+        run: dotnet tool install --global dotnet-format
+
+      - name: Lint backend
+        run: dotnet format backend/dotnet/Workforce.slnx --verify-no-changes
+
+      - name: Lint dashboard worker
+        working-directory: backend/node/dashboard-worker
+        run: |
+          npm ci
+          npm run lint
+
+      - name: Lint frontend
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f docker/Dockerfile.api -t workforce-api .
+
+      - name: Build audit worker image
+        run: docker build -f docker/Dockerfile.auditworker -t workforce-audit-worker .
+
+      - name: Build dashboard worker image
+        run: docker build -f docker/Dockerfile.dashboardworker -t workforce-dashboard-worker .
+
+      - name: Build frontend image
+        run: docker build -f docker/Dockerfile.frontend -t workforce-frontend .
