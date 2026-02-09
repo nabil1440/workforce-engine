@@ -27,6 +27,7 @@ public sealed class WorkforceDbContext : DbContext
             entity.Property(e => e.LastName).IsRequired();
             entity.Property(e => e.Email).IsRequired();
             entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => new { e.DepartmentId, e.IsActive });
             entity.Property(e => e.JoiningDate).IsRequired();
         });
 
@@ -51,6 +52,9 @@ public sealed class WorkforceDbContext : DbContext
             entity.Property(p => p.Status).HasConversion<int>();
             entity.Property(p => p.StartDate).IsRequired();
             entity.Property(p => p.EndDate);
+            entity.HasIndex(p => p.Status);
+            entity.HasIndex(p => p.StartDate);
+            entity.HasIndex(p => p.EndDate);
 
             entity.HasMany(p => p.Members)
                 .WithOne()
@@ -77,6 +81,9 @@ public sealed class WorkforceDbContext : DbContext
             entity.Property(t => t.Status).HasConversion<int>();
             entity.Property(t => t.Priority).HasConversion<int>();
             entity.Property(t => t.DueDate).IsRequired();
+            entity.HasIndex(t => new { t.ProjectId, t.Status });
+            entity.HasIndex(t => new { t.ProjectId, t.AssignedEmployeeId });
+            entity.HasIndex(t => new { t.ProjectId, t.DueDate });
         });
     }
 }

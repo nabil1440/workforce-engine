@@ -31,6 +31,7 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<MongoContext>();
+        services.AddHostedService<MongoIndexInitializer>();
 
         services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();

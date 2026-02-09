@@ -65,12 +65,21 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-workforce}
       MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING:-mongodb://mongo:27017}
       MONGO_DATABASE: ${MONGO_DATABASE:-workforce}
-      DASHBOARD_CRON: ${DASHBOARD_CRON:-0 * * * *}
       DASHBOARD_HEALTH_PORT: ${DASHBOARD_HEALTH_PORT:-8090}
+      RABBITMQ_HOSTNAME: ${RABBITMQ_HOSTNAME:-rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_EXCHANGE_PREFIX: ${RABBITMQ_EXCHANGE_PREFIX:-workforce.events}
+      DASHBOARD_RABBIT_QUEUE: ${DASHBOARD_RABBIT_QUEUE:-workforce.dashboard}
+      DASHBOARD_RABBIT_PREFETCH: ${DASHBOARD_RABBIT_PREFETCH:-10}
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test:

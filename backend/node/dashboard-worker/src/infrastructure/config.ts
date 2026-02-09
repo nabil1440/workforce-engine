@@ -4,10 +4,13 @@ export type WorkerConfig = {
   sqlUrl: string;
   mongoConnectionString: string;
   mongoDatabase: string;
-  cronSchedule: string;
   healthPort: number;
   retryMaxAttempts: number;
   retryBaseDelayMs: number;
+  rabbitUrl: string;
+  rabbitExchangePrefix: string;
+  rabbitQueueName: string;
+  rabbitPrefetch: number;
 };
 
 function requireValue(value: string | undefined, name: string): string {
@@ -33,6 +36,25 @@ function buildSqlUrl(): string {
   return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
 }
 
+function buildRabbitUrl(): string {
+  const existing = process.env.RABBITMQ_URL;
+  if (existing && existing.trim().length > 0) {
+    return existing;
+  }
+
+  const host = process.env.RABBITMQ_HOSTNAME ?? 'localhost';
+  const port = process.env.RABBITMQ_PORT ?? '5672';
+  const user = process.env.RABBITMQ_USERNAME ?? 'guest';
+  const password = process.env.RABBITMQ_PASSWORD ?? 'guest';
+  const vhost = process.env.RABBITMQ_VHOST ?? '/';
+  const normalizedVhost = vhost.startsWith('/') ? vhost.slice(1) : vhost;
+  const encodedVhost = encodeURIComponent(
+    normalizedVhost.length > 0 ? normalizedVhost : '/'
+  );
+
+  return `amqp://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodedVhost}`;
+}
+
 export function loadConfig(): WorkerConfig {
   const healthPort = Number.parseInt(
     process.env.DASHBOARD_HEALTH_PORT ?? '8090',
@@ -46,6 +68,10 @@ export function loadConfig(): WorkerConfig {
     process.env.DASHBOARD_RETRY_BASE_MS ?? '1000',
     10
   );
+  const rabbitPrefetch = Number.parseInt(
+    process.env.DASHBOARD_RABBIT_PREFETCH ?? '10',
+    10
+  );
 
   return {
     sqlUrl: buildSqlUrl(),
@@ -54,9 +80,14 @@ export function loadConfig(): WorkerConfig {
       'MONGO_CONNECTION_STRING'
     ),
     mongoDatabase: process.env.MONGO_DATABASE ?? 'workforce',
-    cronSchedule: process.env.DASHBOARD_CRON ?? '0 * * * *',
     healthPort: Number.isNaN(healthPort) ? 8090 : healthPort,
     retryMaxAttempts: Number.isNaN(retryMaxAttempts) ? 3 : retryMaxAttempts,
-    retryBaseDelayMs: Number.isNaN(retryBaseDelayMs) ? 1000 : retryBaseDelayMs
+    retryBaseDelayMs: Number.isNaN(retryBaseDelayMs) ? 1000 : retryBaseDelayMs,
+    rabbitUrl: buildRabbitUrl(),
+    rabbitExchangePrefix:
+      process.env.RABBITMQ_EXCHANGE_PREFIX ?? 'workforce.events',
+    rabbitQueueName:
+      process.env.DASHBOARD_RABBIT_QUEUE ?? 'workforce.dashboard',
+    rabbitPrefetch: Number.isNaN(rabbitPrefetch) ? 10 : rabbitPrefetch
   };
 }
