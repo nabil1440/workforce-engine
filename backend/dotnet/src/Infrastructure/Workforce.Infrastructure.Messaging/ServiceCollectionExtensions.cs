@@ -17,6 +17,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConnection>(sp =>
         {
             var options = sp.GetRequiredService<RabbitOptions>();
+            if (string.IsNullOrWhiteSpace(options.UserName) || string.IsNullOrWhiteSpace(options.Password))
+            {
+                throw new InvalidOperationException("RabbitMQ credentials must be configured via the Rabbit section.");
+            }
+
             var factory = new ConnectionFactory
             {
                 HostName = options.HostName,
