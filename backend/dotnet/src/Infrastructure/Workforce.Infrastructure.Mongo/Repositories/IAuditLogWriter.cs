@@ -4,5 +4,5 @@ namespace Workforce.Infrastructure.Mongo.Repositories;
 
 public interface IAuditLogWriter
 {
-    Task AddAsync(AuditLog auditLog, CancellationToken cancellationToken = default);
+    Task UpsertAsync(AuditLog auditLog, CancellationToken cancellationToken = default);
 }

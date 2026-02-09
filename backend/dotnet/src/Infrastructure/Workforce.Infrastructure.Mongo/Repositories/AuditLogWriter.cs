@@ -12,8 +12,12 @@ public sealed class AuditLogWriter : IAuditLogWriter
         _collection = context.AuditLogs;
     }
 
-    public Task AddAsync(AuditLog auditLog, CancellationToken cancellationToken = default)
+    public Task UpsertAsync(AuditLog auditLog, CancellationToken cancellationToken = default)
     {
-        return _collection.InsertOneAsync(auditLog, cancellationToken: cancellationToken);
+        return _collection.ReplaceOneAsync(
+            log => log.Id == auditLog.Id,
+            auditLog,
+            new ReplaceOptions { IsUpsert = true },
+            cancellationToken);
     }
 }
