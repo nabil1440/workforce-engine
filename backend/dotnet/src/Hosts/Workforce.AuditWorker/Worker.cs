@@ -89,6 +89,9 @@ public sealed class Worker : BackgroundService
             }
 
             var (entityType, entityId) = ResolveEntityInfo(envelope.Payload);
+            var actor = ResolveActor(envelope.Payload);
+            var before = ResolveSnapshot(envelope.Payload, "Before");
+            var after = ResolveSnapshot(envelope.Payload, "After") ?? envelope.Payload;
 
             var auditLog = new AuditLog
             {
@@ -97,9 +100,9 @@ public sealed class Worker : BackgroundService
                 EntityType = entityType,
                 EntityId = entityId,
                 Timestamp = envelope.OccurredAt == default ? DateTimeOffset.UtcNow : envelope.OccurredAt,
-                Actor = "system",
-                Before = null,
-                After = envelope.Payload
+                Actor = actor,
+                Before = before,
+                After = after
             };
 
             await _writer.AddAsync(auditLog);
@@ -152,6 +155,26 @@ public sealed class Worker : BackgroundService
         }
 
         return ("Unknown", string.Empty);
+    }
+
+    private static string ResolveActor(JsonElement payload)
+    {
+        if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("Actor", out var actor))
+        {
+            return actor.GetString() ?? "system";
+        }
+
+        return "system";
+    }
+
+    private static JsonElement? ResolveSnapshot(JsonElement payload, string propertyName)
+    {
+        if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty(propertyName, out var value))
+        {
+            return value;
+        }
+
+        return null;
     }
 
     public override Task StopAsync(CancellationToken cancellationToken)
