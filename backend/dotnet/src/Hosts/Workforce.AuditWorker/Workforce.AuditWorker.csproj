@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Core\Workforce.AppCore\Workforce.AppCore.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Workforce.Infrastructure.Mongo\Workforce.Infrastructure.Mongo.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Workforce.Infrastructure.Messaging\Workforce.Infrastructure.Messaging.csproj" />

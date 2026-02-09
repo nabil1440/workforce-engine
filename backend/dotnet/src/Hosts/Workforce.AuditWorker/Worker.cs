@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -33,6 +36,8 @@ public sealed class Worker : BackgroundService
     private readonly IAuditLogWriter _writer;
     private IModel? _channel;
 
+    private const string RetryHeader = "x-retry-count";
+
     public Worker(ILogger<Worker> logger, IConnection connection, RabbitOptions options, IAuditLogWriter writer)
     {
         _logger = logger;
@@ -48,6 +53,24 @@ public sealed class Worker : BackgroundService
 
         _channel.QueueDeclare(
             queue: _options.AuditQueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: null);
+
+        _channel.QueueDeclare(
+            queue: _options.AuditRetryQueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: new Dictionary<string, object>
+            {
+                ["x-dead-letter-exchange"] = string.Empty,
+                ["x-dead-letter-routing-key"] = _options.AuditQueueName
+            });
+
+        _channel.QueueDeclare(
+            queue: _options.AuditDeadLetterQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -93,9 +116,10 @@ public sealed class Worker : BackgroundService
             var before = ResolveSnapshot(envelope.Payload, "Before");
             var after = ResolveSnapshot(envelope.Payload, "After") ?? envelope.Payload;
 
+            var auditId = ComputeAuditId(args.Body);
             var auditLog = new AuditLog
             {
-                Id = Guid.NewGuid().ToString("N"),
+                Id = auditId,
                 EventType = envelope.EventType,
                 EntityType = entityType,
                 EntityId = entityId,
@@ -105,13 +129,13 @@ public sealed class Worker : BackgroundService
                 After = after
             };
 
-            await _writer.AddAsync(auditLog);
+            await _writer.UpsertAsync(auditLog);
             _channel.BasicAck(args.DeliveryTag, false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process audit event message.");
-            _channel.BasicNack(args.DeliveryTag, false, true);
+            HandleRetry(args);
         }
     }
 
@@ -175,6 +199,81 @@ public sealed class Worker : BackgroundService
         }
 
         return null;
+    }
+
+    private void HandleRetry(BasicDeliverEventArgs args)
+    {
+        if (_channel is null)
+        {
+            return;
+        }
+
+        var currentRetry = GetRetryCount(args.BasicProperties);
+        if (currentRetry >= _options.MaxRetries)
+        {
+            PublishToQueue(_options.AuditDeadLetterQueueName, args, currentRetry);
+            _channel.BasicAck(args.DeliveryTag, false);
+            return;
+        }
+
+        var nextRetry = currentRetry + 1;
+        var delaySeconds = _options.RetryBaseDelaySeconds * (int)Math.Pow(2, currentRetry);
+        PublishToQueue(_options.AuditRetryQueueName, args, nextRetry, delaySeconds * 1000);
+        _channel.BasicAck(args.DeliveryTag, false);
+    }
+
+    private int GetRetryCount(IBasicProperties? properties)
+    {
+        if (properties?.Headers is null)
+        {
+            return 0;
+        }
+
+        if (!properties.Headers.TryGetValue(RetryHeader, out var value) || value is null)
+        {
+            return 0;
+        }
+
+        return value switch
+        {
+            byte[] bytes => int.TryParse(Encoding.UTF8.GetString(bytes), out var parsed) ? parsed : 0,
+            int retry => retry,
+            long retry => (int)retry,
+            _ => 0
+        };
+    }
+
+    private void PublishToQueue(string queueName, BasicDeliverEventArgs args, int retryCount, int? delayMilliseconds = null)
+    {
+        if (_channel is null)
+        {
+            return;
+        }
+
+        var properties = _channel.CreateBasicProperties();
+        properties.Persistent = true;
+        properties.ContentType = args.BasicProperties?.ContentType ?? "application/json";
+        properties.Headers = new Dictionary<string, object>
+        {
+            [RetryHeader] = retryCount.ToString(CultureInfo.InvariantCulture)
+        };
+
+        if (delayMilliseconds.HasValue)
+        {
+            properties.Expiration = delayMilliseconds.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        _channel.BasicPublish(
+            exchange: string.Empty,
+            routingKey: queueName,
+            basicProperties: properties,
+            body: args.Body);
+    }
+
+    private static string ComputeAuditId(ReadOnlyMemory<byte> messageBody)
+    {
+        var bytes = SHA256.HashData(messageBody.Span);
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     public override Task StopAsync(CancellationToken cancellationToken)
