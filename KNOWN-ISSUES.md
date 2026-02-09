@@ -56,7 +56,7 @@ This file tracks unresolved issues, operational limitations, and scale constrain
 
 ## What I Would Do With More Time
 
-- Complete the frontend feature set and verify all user flows against the API contract.
+- Complete the frontend features set and verify all user flows against the API contract.
 - Add a DLQ workflow and alerting to make failed event recovery operationally safe. Tradeoff: operational complexity increases and replay can introduce duplicate processing risk.
 - Add worker rate limiting for burst traffic to avoid DB overload. Tradeoff: higher event latency and slower dashboard freshness under spikes.
 - Switch workers to batch reads and writes where possible to reduce per-event query cost. Tradeoff: batching adds memory usage and delays visibility of recent changes.

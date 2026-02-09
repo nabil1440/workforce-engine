@@ -7,7 +7,7 @@ This document captures how AI assistance was used in this repository and how out
 - I used ChatGPT for initial planning of the architecture and to validate my understanding of the requirements and constraints, and the minimal folder structure needed to implement the features.
 - For 90-95% tasks GitHub Copilot (GPT-5.2-Codex) for code generation, code review support, and troubleshooting guidance.
 - Local codebase inspection to verify architecture rules and required API surface.
-- In some cases Claude Sonnet 4.6 was used to solve problems that GPT-5.2-Codex struggled with, such as detecting the issue with Swagger and OpenAPI compatibility in the API project.
+- In some cases Claude Opus 4.6 was used to solve problems that GPT-5.2-Codex struggled with, such as detecting the issue with Swagger and OpenAPI compatibility in the API project.
 
 ## Planning
 
@@ -20,6 +20,7 @@ This document captures how AI assistance was used in this repository and how out
 - I gave the AI model definitions, architecture rules, and examples of existing code to generate new code for the API, workers, and documentation.
 - I intervened where the AI drifted from the rules, and corrected the generated code iteratively until it met the requirements.
 - I had the AI write tests, and verify code correctness by verifying build and test pass.
+- The AI completely failed to generate correct frontend code, I had to discard about 3000 lines of generated React code. Due to time constraints, I am unable to instruct the AI by writing some frontend code myself, and then having it generate the rest of the frontend code based on that. This is an area for future improvement in the workflow.
 
 ## Debugging and Iteration
 
