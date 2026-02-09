@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/Workforce.AppCore/Workforce.AppCore.csproj" />
+  </Folder>
+  <Folder Name="/src/Hosts/">
+    <Project Path="src/Hosts/Workforce.Api/Workforce.Api.csproj" />
+    <Project Path="src/Hosts/Workforce.AuditWorker/Workforce.AuditWorker.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/Workforce.Infrastructure.Messaging/Workforce.Infrastructure.Messaging.csproj" />
+    <Project Path="src/Infrastructure/Workforce.Infrastructure.Mongo/Workforce.Infrastructure.Mongo.csproj" />
+    <Project Path="src/Infrastructure/Workforce.Infrastructure.Sql/Workforce.Infrastructure.Sql.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Workforce.Api.Tests/Workforce.Api.Tests.csproj" />
+    <Project Path="tests/Workforce.AppCore.Tests/Workforce.AppCore.Tests.csproj" />
+  </Folder>
+</Solution>

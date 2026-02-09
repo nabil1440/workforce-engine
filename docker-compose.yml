@@ -1,0 +1,127 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    environment:
+      ConnectionStrings__Sql: Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-workforce};Username=${POSTGRES_USER:-workforce};Password=${POSTGRES_PASSWORD:-workforce}
+      Mongo__ConnectionString: ${MONGO_CONNECTION_STRING:-mongodb://mongo:27017}
+      Mongo__Database: ${MONGO_DATABASE:-workforce}
+      Rabbit__HostName: ${RABBITMQ_HOSTNAME:-rabbitmq}
+      Rabbit__Port: ${RABBITMQ_PORT:-5672}
+      Rabbit__UserName: ${RABBITMQ_USERNAME:-guest}
+      Rabbit__Password: ${RABBITMQ_PASSWORD:-guest}
+      Rabbit__VirtualHost: ${RABBITMQ_VHOST:-/}
+      Rabbit__ExchangePrefix: ${RABBITMQ_EXCHANGE_PREFIX:-workforce.events}
+      Rabbit__AuditQueueName: ${RABBITMQ_AUDIT_QUEUE:-workforce.audit}
+    ports:
+      - '${API_PORT:-8080}:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  audit-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.auditworker
+    environment:
+      Mongo__ConnectionString: ${MONGO_CONNECTION_STRING:-mongodb://mongo:27017}
+      Mongo__Database: ${MONGO_DATABASE:-workforce}
+      Rabbit__HostName: ${RABBITMQ_HOSTNAME:-rabbitmq}
+      Rabbit__Port: ${RABBITMQ_PORT:-5672}
+      Rabbit__UserName: ${RABBITMQ_USERNAME:-guest}
+      Rabbit__Password: ${RABBITMQ_PASSWORD:-guest}
+      Rabbit__VirtualHost: ${RABBITMQ_VHOST:-/}
+      Rabbit__ExchangePrefix: ${RABBITMQ_EXCHANGE_PREFIX:-workforce.events}
+      Rabbit__AuditQueueName: ${RABBITMQ_AUDIT_QUEUE:-workforce.audit}
+      Rabbit__AuditRetryQueueName: ${RABBITMQ_AUDIT_RETRY_QUEUE:-workforce.audit.retry}
+      Rabbit__AuditDeadLetterQueueName: ${RABBITMQ_AUDIT_DLQ:-workforce.audit.dlq}
+      Rabbit__MaxRetries: ${RABBITMQ_MAX_RETRIES:-3}
+      Rabbit__RetryBaseDelaySeconds: ${RABBITMQ_RETRY_BASE_DELAY_SECONDS:-5}
+      Health__Url: ${AUDIT_HEALTH_URL:-http://0.0.0.0:8081}
+    ports:
+      - '${AUDIT_WORKER_PORT:-8081}:8081'
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  dashboard-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboardworker
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-workforce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workforce}
+      POSTGRES_DB: ${POSTGRES_DB:-workforce}
+      MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING:-mongodb://mongo:27017}
+      MONGO_DATABASE: ${MONGO_DATABASE:-workforce}
+      DASHBOARD_CRON: ${DASHBOARD_CRON:-0 * * * *}
+      DASHBOARD_HEALTH_PORT: ${DASHBOARD_HEALTH_PORT:-8090}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "http=require(\"http\");port=process.env.DASHBOARD_HEALTH_PORT||8090;http.get({host:\"127.0.0.1\",port,path:\"/health\"},res=>{process.exit(res.statusCode===200?0:1);}).on(\"error\",()=>process.exit(1));"'
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-workforce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workforce}
+      POSTGRES_DB: ${POSTGRES_DB:-workforce}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo:
+    image: mongo:7
+    ports:
+      - '${MONGO_PORT:-27017}:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        ['CMD', 'mongosh', '--quiet', '--eval', 'db.runCommand({ ping: 1 }).ok']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - '${RABBITMQ_PORT:-5672}:5672'
+      - '${RABBITMQ_MANAGEMENT_PORT:-15672}:15672'
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  mongo_data:

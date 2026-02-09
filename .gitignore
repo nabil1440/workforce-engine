@@ -1,1 +1,8 @@
 .context/
+
+# .NET build artifacts
+**/bin/
+**/obj/
+.env
+**/node_modules/
+**/dist/
