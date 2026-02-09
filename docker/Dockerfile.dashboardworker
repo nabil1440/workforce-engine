@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM node:24-bullseye-slim AS build
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN npm install
 RUN npm run generate
 RUN npm run build
 
-FROM node:24-alpine
+FROM node:24-bullseye-slim
 WORKDIR /app
 
 COPY --from=build /app/package.json ./

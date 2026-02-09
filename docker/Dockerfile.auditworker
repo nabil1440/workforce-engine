@@ -7,7 +7,7 @@ COPY backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Mongo/Workforce.
 COPY backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Messaging/Workforce.Infrastructure.Messaging.csproj backend/dotnet/src/Infrastructure/Workforce.Infrastructure.Messaging/
 COPY backend/dotnet/src/Hosts/Workforce.AuditWorker/Workforce.AuditWorker.csproj backend/dotnet/src/Hosts/Workforce.AuditWorker/
 
-RUN dotnet restore backend/dotnet/Workforce.slnx
+RUN dotnet restore backend/dotnet/src/Hosts/Workforce.AuditWorker/Workforce.AuditWorker.csproj
 
 COPY backend/dotnet/ backend/dotnet/
 
