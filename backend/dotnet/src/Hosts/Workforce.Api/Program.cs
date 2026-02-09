@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHealthChecks();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -49,6 +50,7 @@ app.UseSwaggerUI(options =>
 });
 
 app.UseHttpsRedirection();
+app.MapHealthChecks("/health");
 app.MapControllers();
 if (!app.Configuration.GetValue("SkipMigrationsOnStartup", false))
 {
