@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id            Int    @id @default(autoincrement())
+  firstName     String
+  lastName      String
+  email         String @unique
+  isActive      Boolean
+  departmentId  Int
+  designationId Int
+  salary        Decimal
+  joiningDate   DateTime @db.Date
+  phone         String?
+  address       String?
+  city          String?
+  country       String?
+
+  @@map("Employees")
+}
+
+model Department {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  @@map("Departments")
+}
+
+model Designation {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  @@map("Designations")
+}
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  status      Int
+  startDate   DateTime @db.Date
+  endDate     DateTime? @db.Date
+
+  @@map("Projects")
+}
+
+model ProjectMember {
+  projectId  Int
+  employeeId Int
+
+  @@id([projectId, employeeId])
+  @@map("ProjectMembers")
+}
+
+model WorkTask {
+  id                 Int      @id @default(autoincrement())
+  projectId          Int
+  assignedEmployeeId Int?
+  title              String
+  description        String?
+  status             Int
+  priority           Int
+  dueDate            DateTime @db.Date
+
+  @@map("Tasks")
+}
