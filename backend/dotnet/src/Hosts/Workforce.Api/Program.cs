@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 using Microsoft.OpenApi.Models;
 using Workforce.Api.Startup;
 using Workforce.AppCore.Services;
@@ -42,6 +43,34 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 var app = builder.Build();
 
+// Swagger UI bundled with Swashbuckle 6.x does not support OpenAPI 3.0.4
+// emitted by Microsoft.OpenApi >= 1.6.  Rewrite the spec version to 3.0.1.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (path != null && path.EndsWith("swagger.json", StringComparison.OrdinalIgnoreCase))
+    {
+        var originalBody = context.Response.Body;
+        using var buffer = new MemoryStream();
+        context.Response.Body = buffer;
+
+        await next();
+
+        buffer.Seek(0, SeekOrigin.Begin);
+        var json = await new StreamReader(buffer).ReadToEndAsync();
+        json = json.Replace("\"openapi\": \"3.0.4\"", "\"openapi\": \"3.0.1\"")
+                   .Replace("\"openapi\":\"3.0.4\"", "\"openapi\":\"3.0.1\"");
+
+        context.Response.Body = originalBody;
+        context.Response.ContentLength = Encoding.UTF8.GetByteCount(json);
+        await context.Response.WriteAsync(json);
+    }
+    else
+    {
+        await next();
+    }
+});
+
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -49,7 +78,10 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger";
 });
 
-app.UseHttpsRedirection();
+if (app.Configuration.GetValue("UseHttpsRedirection", false))
+{
+    app.UseHttpsRedirection();
+}
 app.MapHealthChecks("/health");
 app.MapControllers();
 if (!app.Configuration.GetValue("SkipMigrationsOnStartup", false))
