@@ -6,6 +6,8 @@ export type WorkerConfig = {
   mongoDatabase: string;
   cronSchedule: string;
   healthPort: number;
+  retryMaxAttempts: number;
+  retryBaseDelayMs: number;
 };
 
 function requireValue(value: string | undefined, name: string): string {
@@ -33,7 +35,15 @@ function buildSqlUrl(): string {
 
 export function loadConfig(): WorkerConfig {
   const healthPort = Number.parseInt(
-    process.env.DASHBOARD_HEALTH_PORT ?? "8090",
+    process.env.DASHBOARD_HEALTH_PORT ?? '8090',
+    10
+  );
+  const retryMaxAttempts = Number.parseInt(
+    process.env.DASHBOARD_RETRY_MAX ?? '3',
+    10
+  );
+  const retryBaseDelayMs = Number.parseInt(
+    process.env.DASHBOARD_RETRY_BASE_MS ?? '1000',
     10
   );
 
@@ -45,6 +55,8 @@ export function loadConfig(): WorkerConfig {
     ),
     mongoDatabase: process.env.MONGO_DATABASE ?? 'workforce',
     cronSchedule: process.env.DASHBOARD_CRON ?? '0 * * * *',
-    healthPort: Number.isNaN(healthPort) ? 8090 : healthPort
+    healthPort: Number.isNaN(healthPort) ? 8090 : healthPort,
+    retryMaxAttempts: Number.isNaN(retryMaxAttempts) ? 3 : retryMaxAttempts,
+    retryBaseDelayMs: Number.isNaN(retryBaseDelayMs) ? 1000 : retryBaseDelayMs
   };
 }
