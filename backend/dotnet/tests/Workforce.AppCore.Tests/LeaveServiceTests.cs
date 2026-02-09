@@ -1,6 +1,7 @@
 using Workforce.AppCore.Abstractions.Queries;
 using Workforce.AppCore.Abstractions.Repositories;
 using Workforce.AppCore.Abstractions.Results;
+using Workforce.AppCore.Abstractions;
 using Workforce.AppCore.Domain.Leaves;
 using Workforce.AppCore.Services.Implementations;
 
@@ -12,7 +13,7 @@ public class LeaveServiceTests
     public async Task CreateAsync_SetsPendingStatusAndCreatedAt()
     {
         var repo = new FakeLeaveRepository();
-        var service = new LeaveService(repo);
+        var service = new LeaveService(repo, new FakeEventPublisher());
 
         var leave = new LeaveRequest
         {
@@ -34,7 +35,7 @@ public class LeaveServiceTests
     public async Task ApproveAsync_FailsWhenAlreadyApproved()
     {
         var repo = new FakeLeaveRepository();
-        var service = new LeaveService(repo);
+        var service = new LeaveService(repo, new FakeEventPublisher());
 
         var leave = new LeaveRequest
         {
@@ -92,6 +93,14 @@ public class LeaveServiceTests
         public Task UpdateAsync(LeaveRequest leaveRequest, CancellationToken cancellationToken = default)
         {
             _store[leaveRequest.Id] = leaveRequest;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeEventPublisher : IEventPublisher
+    {
+        public Task PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
+        {
             return Task.CompletedTask;
         }
     }

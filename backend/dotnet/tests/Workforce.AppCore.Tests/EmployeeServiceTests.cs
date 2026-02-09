@@ -1,6 +1,7 @@
 using Workforce.AppCore.Abstractions.Queries;
 using Workforce.AppCore.Abstractions.Repositories;
 using Workforce.AppCore.Abstractions.Results;
+using Workforce.AppCore.Abstractions;
 using Workforce.AppCore.Domain.Employees;
 using Workforce.AppCore.Services.Implementations;
 
@@ -12,7 +13,7 @@ public class EmployeeServiceTests
     public async Task CreateAsync_FailsWhenEmployeeInvalid()
     {
         var repo = new FakeEmployeeRepository();
-        var service = new EmployeeService(repo);
+        var service = new EmployeeService(repo, new FakeEventPublisher());
 
         var employee = new Employee
         {
@@ -34,7 +35,7 @@ public class EmployeeServiceTests
     public async Task CreateAsync_SetsIdOnSuccess()
     {
         var repo = new FakeEmployeeRepository();
-        var service = new EmployeeService(repo);
+        var service = new EmployeeService(repo, new FakeEventPublisher());
 
         var employee = new Employee
         {
@@ -57,7 +58,7 @@ public class EmployeeServiceTests
     public async Task GetByIdAsync_ReturnsNotFound()
     {
         var repo = new FakeEmployeeRepository();
-        var service = new EmployeeService(repo);
+        var service = new EmployeeService(repo, new FakeEventPublisher());
 
         var result = await service.GetByIdAsync(10);
 
@@ -108,6 +109,14 @@ public class EmployeeServiceTests
                 employee.IsActive = false;
             }
 
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeEventPublisher : IEventPublisher
+    {
+        public Task PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
+        {
             return Task.CompletedTask;
         }
     }
