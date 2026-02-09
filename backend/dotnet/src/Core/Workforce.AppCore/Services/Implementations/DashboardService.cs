@@ -16,8 +16,21 @@ public sealed class DashboardService : IDashboardService
     public async Task<Result<DashboardSummary>> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
         var summary = await _dashboard.GetLatestAsync(cancellationToken);
-        return summary is null
-            ? Result<DashboardSummary>.Fail(Errors.NotFound("DashboardSummary", "latest"))
-            : Result<DashboardSummary>.Success(summary);
+        if (summary is not null)
+        {
+            return Result<DashboardSummary>.Success(summary);
+        }
+
+        summary = new DashboardSummary
+        {
+            Id = "latest",
+            GeneratedAt = DateTimeOffset.UtcNow,
+            ActiveProjectsCount = 0,
+            HeadcountByDepartment = [],
+            TasksByStatus = [],
+            LeaveStats = []
+        };
+
+        return Result<DashboardSummary>.Success(summary);
     }
 }

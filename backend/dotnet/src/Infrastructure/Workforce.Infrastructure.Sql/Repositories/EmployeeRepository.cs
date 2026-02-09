@@ -60,6 +60,18 @@ public sealed class EmployeeRepository : IEmployeeRepository
         return _dbContext.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Employee>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+        {
+            return Array.Empty<Employee>();
+        }
+
+        return await _dbContext.Employees.AsNoTracking()
+            .Where(e => ids.Contains(e.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<int> AddAsync(Employee employee, CancellationToken cancellationToken = default)
     {
         _dbContext.Employees.Add(employee);

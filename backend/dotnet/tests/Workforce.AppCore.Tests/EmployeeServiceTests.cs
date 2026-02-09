@@ -89,6 +89,16 @@ public class EmployeeServiceTests
             return Task.FromResult(employee);
         }
 
+        public Task<IReadOnlyList<Employee>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+        {
+            var items = ids.Select(id => _store.TryGetValue(id, out var employee) ? employee : null)
+                .Where(employee => employee is not null)
+                .Cast<Employee>()
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<Employee>>(items);
+        }
+
         public Task<int> AddAsync(Employee employee, CancellationToken cancellationToken = default)
         {
             var id = _nextId++;
